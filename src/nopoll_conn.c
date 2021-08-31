@@ -2142,7 +2142,9 @@ void          nopoll_conn_close_ext  (noPollConn  * conn, int status, const char
 
 	/* avoid calling next unref in the case not enough references
 	 * are found */
-	if (refs <= 1)
+	
+	/*removed refs=1 which is preventing free of conn object*/
+	if (refs < 1)
 		return;
 
 	/* call to unref connection */
