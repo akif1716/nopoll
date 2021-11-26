@@ -183,6 +183,20 @@ void nopoll_loop_stop (noPollCtx * ctx)
 	return;
 } /* end if */
 
+void timespec_diff(struct timespec *start, struct timespec *stop,
+                   struct timespec *diff)
+{
+    if ((stop->tv_nsec - start->tv_nsec) < 0) {
+        diff->tv_sec = stop->tv_sec - start->tv_sec - 1;
+        diff->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000UL;
+    } else {
+        diff->tv_sec = stop->tv_sec - start->tv_sec;
+        diff->tv_nsec = stop->tv_nsec - start->tv_nsec;
+    }
+
+    return;
+}
+
 /** 
  * @brief Allows to implement a wait over all connections registered
  * under the provided context during the provided timeout until
@@ -227,9 +241,9 @@ void nopoll_loop_stop (noPollCtx * ctx)
  */
 int nopoll_loop_wait (noPollCtx * ctx, long timeout)
 {
-	struct timeval start;
-	struct timeval stop;
-	struct timeval diff;
+	struct timespec start;
+	struct timespec stop;
+	struct timespec diff;
 	long           ellapsed;
 	int            wait_status;
 	int            result = 0;
@@ -245,7 +259,7 @@ int nopoll_loop_wait (noPollCtx * ctx, long timeout)
 #if defined(NOPOLL_OS_WIN32)
 		nopoll_win32_gettimeofday (&start, NULL);
 #else
-		gettimeofday (&start, NULL);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
 	
 	/* set to keep looping everything this function is called */
@@ -289,10 +303,10 @@ int nopoll_loop_wait (noPollCtx * ctx, long timeout)
 #if defined(NOPOLL_OS_WIN32)
 			nopoll_win32_gettimeofday (&stop, NULL);
 #else
-			gettimeofday (&stop, NULL);
+			clock_gettime(CLOCK_MONOTONIC, &stop);
 #endif
-			nopoll_timeval_substract (&stop, &start, &diff);
-			ellapsed = (diff.tv_sec * 1000000) + diff.tv_usec;
+			timespec_diff (&start, &stop, &diff);
+			ellapsed = (diff.tv_sec * 1000000) + (diff.tv_nsec/1000);
 			if (ellapsed > timeout) {
 				result = -3; /* timeout reached */
 				break;
