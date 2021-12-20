@@ -2085,6 +2085,7 @@ void          nopoll_conn_close_ext  (noPollConn  * conn, int status, const char
 {
 	int    refs;
 	char * content;
+	char * conn_role = "unknown";
 #if defined(SHOW_DEBUG_LOG)
 	const char * role = "unknown";
 #endif
@@ -2136,15 +2137,20 @@ void          nopoll_conn_close_ext  (noPollConn  * conn, int status, const char
 		nopoll_conn_shutdown (conn);
 	} /* end if */
 
+	if (conn->role == NOPOLL_ROLE_LISTENER)
+                conn_role = "listener";
+	else if (conn->role == NOPOLL_ROLE_CLIENT)
+                conn_role = "client";
+
 	/* unregister connection from context */
 	refs = nopoll_conn_ref_count (conn);
 	nopoll_ctx_unregister_conn (conn->ctx, conn);
 
 	/* avoid calling next unref in the case not enough references
 	 * are found */
-	
-	/*removed refs=1 which is preventing free of conn object*/
-	if (refs < 1)
+
+	/* removed refs=1 which is preventing free of conn object only for client role */
+	if (((strcmp(conn_role,"listener") == 0) && refs == 1) || refs < 1)
 		return;
 
 	/* call to unref connection */
